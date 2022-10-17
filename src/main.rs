@@ -3,14 +3,12 @@ extern crate keepass;
 mod commandline_opts;
 
 use async_recursion::async_recursion;
-use clap::builder::Str;
 use commandline_opts::CommandlineOpts;
-use futures::executor::block_on;
-use keepass::{Database, Entry, Error, Group, Node, NodeRef, Result};
-use log::{debug, error, info, warn};
+use keepass::{Database, Entry, Group, Node, Result};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use vaultrs::client::{Client, VaultClient, VaultClientSettingsBuilder};
+use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::kv2;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -35,7 +33,7 @@ async fn main() -> Result<()> {
         None,
     )?;
 
-    let mut vault_client = VaultClient::new(
+    let vault_client = VaultClient::new(
         VaultClientSettingsBuilder::default()
             .address(&opts.vault_addr)
             .token(&opts.vault_token)
@@ -68,7 +66,7 @@ async fn process_keepass_group(
                 let path = format!("{}/{}", path, g.name);
                 process_keepass_group(path.as_str(), g, vault_client, opts).await
             }
-            Node::Entry(n) => process_kepass_entry(path, n, vault_client, opts).await
+            Node::Entry(n) => process_kepass_entry(path, n, vault_client, opts).await,
         }
     }
 }

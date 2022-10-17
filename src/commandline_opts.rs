@@ -1,12 +1,12 @@
 use clap::Parser;
 use std::env;
 
+#[derive(Parser, Debug, Clone)]
 #[command(
-    version = "0.1.0",
+version = "0.1.0",
     author = "Paul Rogalinski-Pinter, keepass2vault@t00ltime.de",
     about = "Imports all secrets from a keepass file into Hashicorp-vault"
 )]
-#[derive(Parser, Debug, Clone)]
 pub struct CommandlineOpts {
     #[arg(long, default_value = "http://127.0.0.1:8200", env = "VAULT_ADDR")]
     pub vault_addr: String,
