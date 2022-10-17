@@ -1,6 +1,8 @@
 # keepass2vault
 
-Hacked together motivated by personal needs.
+Imports all secrets with basic properties (title, user, pass, notes and url) into a given vault instance. 
+
+Hacked together motivated by personal needs. Error handling is not great but verbose (`-v`) mode will help. 
 
 ## Build
 
