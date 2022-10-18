@@ -5,7 +5,7 @@ mod commandline_opts;
 use async_recursion::async_recursion;
 use commandline_opts::CommandlineOpts;
 use keepass::{Database, Entry, Group, Node, Result};
-use log::info;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
@@ -66,18 +66,18 @@ async fn process_keepass_group(
                 let path = format!("{}/{}", path, g.name);
                 process_keepass_group(path.as_str(), g, vault_client, opts).await
             }
-            Node::Entry(n) => process_kepass_entry(path, n, vault_client, opts).await,
+            Node::Entry(n) => process_keepass_entry(path, n, vault_client, opts).await,
         }
     }
 }
 
-async fn process_kepass_entry(
+async fn process_keepass_entry(
     path: &str,
     entry: &Entry,
     vault_client: &VaultClient,
     opts: &CommandlineOpts,
 ) {
-    let title = entry.get_title().unwrap_or("undefined");
+    let title = sanitize_node_name(entry.get_title().unwrap_or("undefined"));
     let secret = KeepassSecret {
         title: entry.get_title().unwrap().to_string(),
         user: entry.get_username().unwrap().to_string(),
@@ -86,11 +86,25 @@ async fn process_kepass_entry(
         url: entry.get("URL").unwrap_or("").to_string(),
     };
 
-    let path = path.replace(" ", "_").replace("\"", "_");
-    let path = format!("{}/{}", path, title);
-    let path = path.strip_prefix("/").unwrap_or(path.as_str());
-    let path = path.strip_suffix("/").unwrap_or(path);
+    let path = sanitize_path(format!("{}/{}", path, title).as_str());
 
-    info!("creating / updating secret {}", path);
-    kv2::set(vault_client, opts.mount.as_str(), path, &secret).await;
+    info!("creating / updating secret {}", &path);
+    match kv2::set(vault_client, opts.mount.as_str(), &path, &secret).await {
+        Ok(_) => {}
+        Err(client_error) => {
+            error!("Could not set vault key {:?}", client_error)
+        }
+    }
+}
+
+fn sanitize_node_name(node_name: &str) -> String {
+    node_name
+      .replace(" ", "_")
+      .replace("\"", "_")
+}
+
+fn sanitize_path(path: &str) -> String {
+  let path = sanitize_node_name(path);
+  let path = path.strip_prefix("/").unwrap_or(path.as_str());
+  path.strip_suffix("/").unwrap_or(path).to_string()
 }
