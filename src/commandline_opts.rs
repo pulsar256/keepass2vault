@@ -3,7 +3,7 @@ use std::env;
 
 #[derive(Parser, Debug, Clone)]
 #[command(
-version = "0.1.0",
+    version = "0.1.1",
     author = "Paul Rogalinski-Pinter, keepass2vault@t00ltime.de",
     about = "Imports all secrets from a keepass file into Hashicorp-vault"
 )]
