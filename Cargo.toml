@@ -1,12 +1,12 @@
 [package]
 name = "keepass2vault"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]
-keepass = "0.4.10"
+keepass = "0.5.0"
 clap = { version = "4.0.15", default-features = true, features = ["env", "derive"] }
-env_logger = "0.9.1"
+env_logger = "0.10.0"
 log = "0.4.14"
 vaultrs = "0.6.2"
 serde = { version = "1.0.145", features = ["derive"] }
