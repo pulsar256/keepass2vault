@@ -78,12 +78,11 @@ async fn process_keepass_entry(
     vault_client: &VaultClient,
     opts: &CommandlineOpts,
 ) {
-    let title = sanitize_node_name(entry.get_title().unwrap_or("undefined"));
-    let mut additional_properties: HashMap<String, Option<String>> = HashMap::new();
+    let mut additional_properties = HashMap::new();
     for key in entry.fields.keys() {
         let key = key.clone();
         if !["Title", "UserName", "Password"].contains(&key.as_str()) {
-            additional_properties.insert(key.clone(), entry.get(&key).map(String::from),);
+            additional_properties.insert(key.clone(), entry.get(&key).map(String::from));
         }
     }
 
@@ -94,7 +93,14 @@ async fn process_keepass_entry(
         additional_properties,
     };
 
-    let path = sanitize_path(format!("{}/{}", path, title).as_str());
+    let path = sanitize_path(
+        format!(
+            "{}/{}",
+            path,
+            sanitize_node_name(entry.get_title().unwrap_or("undefined"))
+        )
+        .as_str(),
+    );
 
     info!("creating / updating secret {}", &path);
     match kv2::set(vault_client, opts.mount.as_str(), &path, &secret).await {
