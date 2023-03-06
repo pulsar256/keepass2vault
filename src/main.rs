@@ -4,9 +4,11 @@ mod commandline_opts;
 
 use async_recursion::async_recursion;
 use commandline_opts::CommandlineOpts;
-use keepass::{Database, Entry, Group, Node, Result};
+use keepass::{Database, Entry, Group, Node};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::error::Error;
 use std::fs::File;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::kv2;
@@ -14,14 +16,13 @@ use vaultrs::kv2;
 #[derive(Debug, Deserialize, Serialize)]
 struct KeepassSecret {
     title: String,
-    user: String,
-    pass: String,
-    notes: String,
-    url: String,
+    user: Option<String>,
+    pass: Option<String>,
+    additional_properties: HashMap<String, Option<String>>,
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn Error>> {
     let opts: CommandlineOpts = CommandlineOpts::parse_and_setup_logger();
 
     info!("migrating from keepass: {}", opts.keepass_file);
@@ -78,12 +79,19 @@ async fn process_keepass_entry(
     opts: &CommandlineOpts,
 ) {
     let title = sanitize_node_name(entry.get_title().unwrap_or("undefined"));
+    let mut additional_properties: HashMap<String, Option<String>> = HashMap::new();
+    for key in entry.fields.keys() {
+        let key = key.clone();
+        if !["Title", "UserName", "Password"].contains(&key.as_str()) {
+            additional_properties.insert(key.clone(), entry.get(&key).map(String::from),);
+        }
+    }
+
     let secret = KeepassSecret {
-        title: entry.get_title().unwrap().to_string(),
-        user: entry.get_username().unwrap().to_string(),
-        pass: entry.get_password().unwrap().to_string(),
-        notes: entry.get("Notes").unwrap_or("").to_string(),
-        url: entry.get("URL").unwrap_or("").to_string(),
+        title: entry.get_title().unwrap_or_default().to_string(),
+        user: entry.get_username().map(String::from),
+        pass: entry.get_password().map(String::from),
+        additional_properties,
     };
 
     let path = sanitize_path(format!("{}/{}", path, title).as_str());
@@ -98,13 +106,11 @@ async fn process_keepass_entry(
 }
 
 fn sanitize_node_name(node_name: &str) -> String {
-    node_name
-      .replace(" ", "_")
-      .replace("\"", "_")
+    node_name.replace(" ", "_").replace("\"", "_")
 }
 
 fn sanitize_path(path: &str) -> String {
-  let path = sanitize_node_name(path);
-  let path = path.strip_prefix("/").unwrap_or(path.as_str());
-  path.strip_suffix("/").unwrap_or(path).to_string()
+    let path = sanitize_node_name(path);
+    let path = path.strip_prefix("/").unwrap_or(path.as_str());
+    path.strip_suffix("/").unwrap_or(path).to_string()
 }
